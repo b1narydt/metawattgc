@@ -1,0 +1,21 @@
+{
+  "name": "lab-l1",
+  "version": "1.0.0",
+  "description": "Lab L-1: Creating a Transaction",
+  "main": "index.js",
+  "scripts": {
+    "lars": "lars",
+    "lars:config": "lars config",
+    "start": "lars start",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@bsv/lars": "^1.5.0",
+    "@bsv/sdk": "^1.5.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.0.0",
+    "typescript": "^5.0.0",
+    "tsx": "^4.20.3"
+  }
+}
