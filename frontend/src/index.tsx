@@ -1,10 +1,11 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App'
+import * as React from 'react';
+import { createRoot } from 'react-dom/client';
+import App from './App';
 
 // Import MUI ThemeProvider and your custom theme
-import { ThemeProvider, CssBaseline } from '@mui/material'
-import web3Theme from './utils/theme'
+import { ThemeProvider, CssBaseline } from '@mui/material';
+// Fix the casing issue with the theme import
+import web3Theme from './Utils/theme';
 
 const rootElement = document.getElementById('root')
 if (!rootElement) {
@@ -27,7 +28,7 @@ if (!rootElement) {
   throw new Error('Root element not found. Please check your index.html file for an element with id="root".')
 }
 
-const root = ReactDOM.createRoot(rootElement)
+const root = createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <ThemeProvider theme={web3Theme}>
@@ -35,4 +36,4 @@ root.render(
       <App />
     </ThemeProvider>
   </React.StrictMode>
-)
+);

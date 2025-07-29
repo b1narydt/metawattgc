@@ -1,169 +1,431 @@
-import React, { useEffect, useState } from 'react'
-import { createTaskToken, loadTasks, redeemTask } from './ToDoManager'
+import * as React from 'react';
+import { useState, useEffect } from 'react';
+import { createCard, loadCards, redeemCard, CardData } from './CardManager';
 import {
-  Container,
-  Typography,
-  TextField,
-  Button,
   Box,
-  List,
-  ListItem,
-  ListItemText,
-  CircularProgress
-} from '@mui/material'
-import Footer from './Utils/footer'
+  Button,
+  Card,
+  CardContent,
+  CardActions,
+  Container,
+  TextField,
+  Typography,
+  Paper,
+  Grid,
+  CircularProgress,
+  Snackbar,
+  Alert,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Chip
+} from '@mui/material';
 
-export default function App() {
-  const [tasks, setTasks] = useState<Array<{
-    task: string,
-    sats: number,
-    token: { txid: string, outputIndex: number, lockingScript: any }
-  }>>([])
+// Rarity options
+const RARITY_OPTIONS = [
+  { value: 'common', label: 'Common', color: 'grey' },
+  { value: 'uncommon', label: 'Uncommon', color: 'green' },
+  { value: 'rare', label: 'Rare', color: 'blue' },
+  { value: 'epic', label: 'Epic', color: 'purple' },
+  { value: 'legendary', label: 'Legendary', color: 'orange' },
+];
 
-  const [newTask, setNewTask] = useState('')
-  const [creating, setCreating] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [status, setStatus] = useState('')
+// Initial form state
+const initialFormState = {
+  name: '',
+  description: '',
+  rarity: 'common',
+  ability: '',
+  history: '',
+  sats: 1000,
+};
 
-  const fetchTasks = async () => {
-    setLoading(true)
-    setStatus('Loading tasks...')
-    try {
-      const result = await loadTasks()
-      setTasks(result)
-      setStatus('')
-    } catch (err: any) {
-      console.error(err)
-      setStatus('Failed to load tasks.')
-    } finally {
-      setLoading(false)
-    }
-  }
+type FormErrors = {
+  [key: string]: string;
+};
 
-  const handleCreate = async () => {
-    // 1. Verify that newTask is not empty and meets length requirements
-    const trimmedTask = newTask.trim()
-    if (!trimmedTask) {
-      setStatus('Task cannot be empty')
-      return
-    }
-    
-    if (trimmedTask.length < 3) {
-      setStatus('Task must be at least 3 characters long')
-      return
-    }
-    
-    setCreating(true)
-    setStatus('Creating task...')
-    
-    try {
-      // 2. Call createTaskToken with newTask and 1 satoshi
-      await createTaskToken(trimmedTask, 1)
-      
-      // 3. On success, clear input and refresh tasks
-      setNewTask('')
-      setStatus('Task created!')
-      await fetchTasks()
-    } catch (err: any) {
-      // 4. Handle errors with user-friendly messages
-      console.error('Task creation failed:', err)
-      const errorMessage = err.message || 'Unknown error occurred'
-      setStatus(`Failed to create task: ${errorMessage}. Check Metanet client connectivity.`)
-    } finally {
-      // 5. Reset creating state
-      setCreating(false)
-    }
-  }
+const App: React.FC = () => {
+  const [formData, setFormData] = useState(initialFormState);
+  const [cards, setCards] = useState<CardData[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success' as 'success' | 'error' | 'info' | 'warning',
+  });
 
-  const handleRedeem = async (idx: number) => {
-    const t = tasks[idx]
-    setStatus(`Redeeming: "${t.task}"`)
-    try {
-      await redeemTask({
-        txid: t.token.txid,
-        outputIndex: t.token.outputIndex,
-        lockingScript: t.token.lockingScript,
-        amount: t.sats
-      })
-      setStatus(`Task "${t.task}" completed.`)
-      await fetchTasks()
-    } catch (err: any) {
-      console.error(err)
-      setStatus('Redemption failed.')
-    }
-  }
-
+  // Load cards on mount
   useEffect(() => {
-    fetchTasks()
-  }, [])
+    fetchCards();
+  }, []);
+
+  // Fetch cards from the wallet
+  const fetchCards = async () => {
+    try {
+      setIsLoading(true);
+      const loadedCards = await loadCards();
+      setCards(loadedCards);
+    } catch (error) {
+      console.error('Failed to load cards:', error);
+      showSnackbar('Failed to load cards', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle input changes for text fields
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
+    }));
+    
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: '',
+      }));
+    }
+  };
+
+  // Handle select changes
+  const handleSelectChange = (e: { target: { name: string; value: unknown } }) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
+    }));
+    
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: '',
+      }));
+    }
+  };
+
+  // Validate form
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
+    
+    if (!formData.name.trim()) newErrors.name = 'Name is required';
+    if (!formData.description.trim()) newErrors.description = 'Description is required';
+    if (!formData.ability.trim()) newErrors.ability = 'Ability is required';
+    if (formData.sats <= 0) newErrors.sats = 'Sats must be greater than 0';
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      showSnackbar('Please fix the form errors', 'error');
+      return;
+    }
+    
+    try {
+      setIsCreating(true);
+      await createCard(formData);
+      setFormData(initialFormState);
+      await fetchCards();
+      showSnackbar('Card created successfully!', 'success');
+    } catch (error) {
+      console.error('Failed to create card:', error);
+      showSnackbar('Failed to create card', 'error');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  // Handle card redemption
+  const handleRedeem = async (card: CardData) => {
+    if (window.confirm(`Are you sure you want to redeem ${card.name}?`)) {
+      try {
+        await redeemCard(card);
+        await fetchCards();
+        showSnackbar('Card redeemed successfully!', 'success');
+      } catch (error) {
+        console.error('Failed to redeem card:', error);
+        showSnackbar('Failed to redeem card', 'error');
+      }
+    }
+  };
+
+  // Show snackbar notification
+  const showSnackbar = (message: string, severity: 'success' | 'error' | 'info' | 'warning') => {
+    setSnackbar({
+      open: true,
+      message,
+      severity,
+    });
+  };
+
+  // Close snackbar
+  const handleCloseSnackbar = () => {
+    setSnackbar(prev => ({
+      ...prev,
+      open: false,
+    }));
+  };
+
+  // Get rarity color
+  const getRarityColor = (rarity: string) => {
+    const rarityOption = RARITY_OPTIONS.find(r => r.value === rarity);
+    return rarityOption ? rarityOption.color : 'grey';
+  };
 
   return (
-    <>
-      <Container maxWidth="sm" sx={{ py: 4 }}>
-        <Typography variant="h4" align="center" gutterBottom>
-          Lab L-7: ToDo List
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', color: 'text.primary' }}>
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Typography variant="h4" align="center" gutterBottom sx={{ fontWeight: 'bold', mb: 4 }}>
+          🃏 Collectible Card Creator
         </Typography>
-
-        <Box sx={{ display: 'flex', gap: 2, my: 3 }}>
-          <TextField
-            fullWidth
-            label="New Task"
-            value={newTask}
-            onChange={(e) => setNewTask(e.target.value)}
-          />
-          <Button
-            variant="contained"
-            onClick={handleCreate}
-            disabled={creating}
-          >
-            {creating ? 'Creating...' : 'Add Task'}
-          </Button>
-        </Box>
-
-        {status && (
-          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-            {status}
+        
+        {/* Create Card Form */}
+        <Paper elevation={3} sx={{ p: 4, mb: 4, bgcolor: 'background.paper' }}>
+          <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
+            Create New Card
           </Typography>
-        )}
-
-        {loading ? (
-          <Box display="flex" justifyContent="center">
-            <CircularProgress />
-          </Box>
-        ) : tasks.length === 0 ? (
-          <Typography>No tasks found. Add one!</Typography>
-        ) : (
-          <Box
-            sx={{
-              maxWidth: '900px',
-              overflowX: 'auto',
-              whiteSpace: 'nowrap',
-              fontFamily: 'monospace',
-              bgcolor: 'grey.900',
-              color: 'white',
-              borderRadius: 2,
-              p: 2,
-              mt: 2
-            }}
-          >
-            <List>
-              {tasks.map((t, idx) => (
-                <ListItem
-                  key={idx}
-                  secondaryAction={
-                    <Button variant="outlined" onClick={() => handleRedeem(idx)}>
-                      Complete
-                    </Button>
-                  }
+          
+          <form onSubmit={handleSubmit}>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Card Name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  error={!!errors.name}
+                  helperText={errors.name}
+                  margin="normal"
+                  variant="outlined"
+                />
+                
+                <FormControl fullWidth margin="normal" error={!!errors.rarity}>
+                  <InputLabel>Rarity</InputLabel>
+                  <Select
+                    name="rarity"
+                    value={formData.rarity}
+                    onChange={handleSelectChange}
+                    label="Rarity"
+                  >
+                    {RARITY_OPTIONS.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                          <Box
+                            sx={{
+                              width: 12,
+                              height: 12,
+                              borderRadius: '50%',
+                              bgcolor: option.color,
+                              mr: 1,
+                            }}
+                          />
+                          {option.label}
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                
+                <TextField
+                  fullWidth
+                  label="Sats"
+                  name="sats"
+                  type="number"
+                  value={formData.sats}
+                  onChange={handleInputChange}
+                  error={!!errors.sats}
+                  helperText={errors.sats}
+                  margin="normal"
+                  variant="outlined"
+                />
+              </Grid>
+              
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Description"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  error={!!errors.description}
+                  helperText={errors.description}
+                  margin="normal"
+                  variant="outlined"
+                  multiline
+                  rows={3}
+                />
+                
+                <TextField
+                  fullWidth
+                  label="Special Ability"
+                  name="ability"
+                  value={formData.ability}
+                  onChange={handleInputChange}
+                  error={!!errors.ability}
+                  helperText={errors.ability || 'What makes this card special?'}
+                  margin="normal"
+                  variant="outlined"
+                />
+                
+                <TextField
+                  fullWidth
+                  label="History (Optional)"
+                  name="history"
+                  value={formData.history}
+                  onChange={handleInputChange}
+                  margin="normal"
+                  variant="outlined"
+                  multiline
+                  rows={2}
+                />
+              </Grid>
+              
+              <Grid item xs={12} sx={{ textAlign: 'center', mt: 2 }}>
+                <Button
+                  type="submit"
+                  variant="contained"
+                  color="primary"
+                  size="large"
+                  disabled={isCreating}
                 >
-                  <ListItemText primary={t.task} />
-                </ListItem>
+                  {isCreating ? 'Creating...' : 'Create Card'}
+                </Button>
+              </Grid>
+            </Grid>
+          </form>
+        </Paper>
+        
+        {/* Cards List */}
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h6" gutterBottom>
+            Your Collection
+            {isLoading && <CircularProgress size={24} sx={{ ml: 2 }} />}
+          </Typography>
+          
+          {isLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : cards.length === 0 ? (
+            <Paper sx={{ p: 4, textAlign: 'center' }}>
+              <Typography variant="body1" color="textSecondary">
+                No cards found. Create your first card to get started!
+              </Typography>
+            </Paper>
+          ) : (
+            <Grid container spacing={3}>
+              {cards.map((card) => (
+                <Grid item xs={12} sm={6} md={4} key={`${card.txid}-${card.outputIndex}`}>
+                  <Card 
+                    sx={{ 
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      borderLeft: `4px solid ${getRarityColor(card.rarity)}`,
+                    }}
+                  >
+                    <CardContent sx={{ flexGrow: 1 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="h6" component="h3" noWrap>
+                          {String(card.name || 'Unnamed Card')}
+                        </Typography>
+                        {card.rarity && (
+                          <Chip 
+                            label={String(card.rarity).charAt(0).toUpperCase() + String(card.rarity).slice(1)}
+                            size="small"
+                            sx={{
+                              bgcolor: `${getRarityColor(String(card.rarity))}.light`,
+                              color: 'white',
+                            }}
+                          />
+                        )}
+                      </Box>
+                      
+                      {card.sats && (
+                        <Chip 
+                          label={`⚡ ${Number(card.sats) || 0} sats`} 
+                          size="small" 
+                          variant="outlined"
+                          sx={{ mb: 2 }}
+                        />
+                      )}
+                      
+                      {card.description && (
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                          {String(card.description)}
+                        </Typography>
+                      )}
+                      
+                      <Box sx={{ mt: 'auto' }}>
+                        {card.ability && (
+                          <>
+                            <Typography variant="subtitle2" color="primary" gutterBottom>
+                              Special Ability:
+                            </Typography>
+                            <Typography variant="body2" sx={{ fontStyle: 'italic', mb: 2 }}>
+                              {String(card.ability)}
+                            </Typography>
+                          </>
+                        )}
+                        
+                        {card.history && (
+                          <>
+                            <Typography variant="subtitle2" color="primary" gutterBottom>
+                              History:
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {String(card.history)}
+                            </Typography>
+                          </>
+                        )}
+                      </Box>
+                    </CardContent>
+                    
+                    <CardActions sx={{ justifyContent: 'flex-end' }}>
+                      <Button 
+                        size="small" 
+                        color="error"
+                        variant="outlined"
+                        onClick={() => handleRedeem(card)}
+                      >
+                        Redeem
+                      </Button>
+                    </CardActions>
+                  </Card>
+                </Grid>
               ))}
-            </List>
-          </Box>
-        )}
+            </Grid>
+          )}
+        </Box>
       </Container>
-      <Footer />
-    </>
-  )
-}
+      
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={handleCloseSnackbar} 
+          severity={snackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Box>
+  );
+};
+
+export default App;
