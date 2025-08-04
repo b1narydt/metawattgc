@@ -78,10 +78,14 @@ const App: React.FC = () => {
 
   // Handle input changes for text fields
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+    const { name, value, type } = e.target as HTMLInputElement;
+    
+    // Convert to number if the input type is 'number'
+    const processedValue = type === 'number' ? Number(value) : value;
+    
     setFormData(prev => ({
       ...prev,
-      [name]: value,
+      [name]: processedValue,
     }));
     
     if (errors[name]) {

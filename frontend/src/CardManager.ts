@@ -62,15 +62,22 @@ function generateUniqueKeyID(): string {
       )
 
       // 4. Create the transaction with the card data
+      // Ensure satoshis is a number
+      const satoshis = Number(card.sats);
+      
+      if (isNaN(satoshis)) {
+        throw new Error('Invalid satoshis value: must be a number');
+      }
+
       const result = await walletClient.createAction({
         description: 'Create collectible card',
         outputs: [
           {
             lockingScript: lockingScript.toHex(),
-            satoshis: card.sats,
+            satoshis: satoshis,
             outputDescription: 'digital collectible card',
             basket: BASKET_NAME,
-            customInstructions: JSON.stringify({ keyID, history })
+            customInstructions: JSON.stringify({ keyID, history: card.history || '' })
           }
         ],
         options: { 
