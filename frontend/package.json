@@ -1,9 +1,9 @@
 {
-    "name": "lab-l8-frontend",
+    "name": "metawattgc-frontend",
     "private": true,
     "version": "1.0.0",
     "type": "module",
-    "description": "Lab L-8: Collectible Card Creator",
+    "description": "MetawattGC: EnergyTag Granular Certificates UI",
     "scripts": {
         "start": "vite",
         "dev": "vite",

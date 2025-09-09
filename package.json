@@ -1,7 +1,7 @@
 {
-  "name": "lab-l1",
+  "name": "metawattgc",
   "version": "1.0.0",
-  "description": "Lab L-1: Creating a Transaction",
+  "description": "MetawattGC: EnergyTag Granular Certificates Workspace",
   "main": "index.js",
   "scripts": {
     "lars": "lars",
