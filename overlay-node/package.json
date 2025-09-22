@@ -1,0 +1,28 @@
+{
+  "name": "metawattgc-overlay-node",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only --esm src/index.ts",
+    "build": "tsc -p .",
+    "start": "node dist/index.js"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.3.1",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@bsv/overlay": "^0.4.6",
+    "@bsv/overlay-discovery-services": "^1.4.2",
+    "@bsv/overlay-express": "^0.7.11",
+    "@bsv/sdk": "^1.7.4",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "mongodb": "^6.17.0",
+    "mysql2": "^3.14.1",
+    "undici": "^7.16.0"
+  }
+}

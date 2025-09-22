@@ -1,30 +1,41 @@
 {
-    "schema": "bsv-app",
-    "schemaVersion": "1.0",
-    "frontend": {
-      "language": "react",
-      "sourceDirectory": "./frontend"
+  "schema": "bsv-app",
+  "schemaVersion": "1.0",
+  "topicManagers": {
+    "tm_metawatt_gc": "./backend/src/topic-managers/MetawattGCTopicManager.ts"
+  },
+  "lookupServices": {
+    "ls_metawatt": {
+      "serviceFactory": "./backend/src/lookup-services/MetawattLookupServiceFactory.ts",
+      "hydrateWith": "mongo"
+    }
+  },
+  "frontend": {
+    "language": "react",
+    "sourceDirectory": "./frontend"
+  },
+  "configs": [
+    {
+      "name": "Local LARS",
+      "provider": "LARS",
+      "network": "mainnet",
+      "run": [
+        "backend",
+        "frontend"
+      ]
     },
-    "configs": [
-      {
-        "name": "Local LARS",
-        "provider": "LARS",
-        "network": "mainnet",
-        "run": [
-          "frontend"
-        ]
-      },
-      {
-        "name": "Production",
-        "provider": "CARS",
-        "CARSCloudURL": "https://cars.babbage.systems",
-        "network": "mainnet",
-        "deploy": [
-          "frontend"
-        ],
-        "projectID": "7a5630a2178b85ebbe070e42912b0d1d",
-        "frontendHostingMethod": "HTTPS"
-      }
-    ]
-  }
+    {
+      "name": "Production",
+      "provider": "CARS",
+      "CARSCloudURL": "https://cars.babbage.systems",
+      "network": "mainnet",
+      "deploy": [
+        "frontend",
+        "backend"
+      ],
+      "projectID": "7a5630a2178b85ebbe070e42912b0d1d",
+      "frontendHostingMethod": "HTTPS"
+    }
+  ]
+}
   

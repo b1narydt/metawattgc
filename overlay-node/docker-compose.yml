@@ -1,0 +1,49 @@
+version: '3.9'
+
+services:
+  overlay:
+    build: .
+    container_name: metawattgc-overlay
+    env_file:
+      - ./.env
+    ports:
+      - "4000:4000"
+    depends_on:
+      - mysql
+      - mongo
+    networks:
+      - overlay-net
+
+  mysql:
+    image: mysql:8.0
+    container_name: metawattgc-mysql
+    command: --default-authentication-plugin=mysql_native_password --innodb-buffer-pool-size=64M
+    environment:
+      MYSQL_DATABASE: overlay
+      MYSQL_USER: overlayAdmin
+      MYSQL_PASSWORD: overlay123
+      MYSQL_ROOT_PASSWORD: rootpw
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - overlay-net
+
+  mongo:
+    image: mongo:6
+    container_name: metawattgc-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - overlay-net
+
+volumes:
+  mysql_data:
+  mongo_data:
+
+networks:
+  overlay-net:
+    driver: bridge

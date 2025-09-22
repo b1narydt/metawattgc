@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@bsv/lars": "^1.5.0",
-    "@bsv/sdk": "^1.5.2"
+    "@bsv/sdk": "^1.7.4"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.0.0",
